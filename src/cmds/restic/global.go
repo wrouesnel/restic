@@ -21,6 +21,7 @@ import (
 	"restic/errors"
 
 	"golang.org/x/crypto/ssh/terminal"
+	"restic/backend/hdfs"
 )
 
 var version = "compiled manually"
@@ -362,6 +363,20 @@ func create(s string) (restic.Backend, error) {
 
 		debug.Log("create s3 repository at %#v", loc.Config)
 		return s3.Open(cfg)
+	case "hdfs":
+		cfg := loc.Config.(hdfs.Config)
+		if cfg.Username == "" {
+			if username := os.Getenv("HADOOP_KERBEROS_USER"); username != "" {
+				cfg.KerberosUsername = username
+				debug.Log("read hadoop user name from HADOOP_KERBEROS_USER")
+			} else if username := os.Getenv("HADOOP_USER_NAME"); username != "" {
+				cfg.Username = username
+				debug.Log("read hadoop user name from HADOOP_USER_NAME")
+			} else {
+				debug.Log("no hadoop user name used")
+			}
+		}
+		return hdfs.Open(cfg)
 	case "rest":
 		return rest.Open(loc.Config.(rest.Config))
 	}
